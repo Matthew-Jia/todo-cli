@@ -18,14 +18,14 @@ A simple, beautiful command-line todo application for developers.
 
 ```bash
 # Install directly from GitHub
-pip install git+https://github.com/yourusername/todo-cli.git
+pip install git+https://github.com/Matthew-Jia/todo-cli.git
 ```
 
 ### Development Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/todo-cli.git
+git clone https://github.com/Matthew-Jia/todo-cli.git
 cd todo-cli
 
 # Create and activate a virtual environment
@@ -42,7 +42,7 @@ The `homebrew` directory contains a formula for installing via Homebrew:
 
 ```bash
 # After the project is published to GitHub with a release
-brew tap yourusername/todo-cli
+brew tap Matthew-Jia/todo-cli
 brew install todo-cli
 ```
 
