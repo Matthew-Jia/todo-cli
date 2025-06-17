@@ -13,6 +13,18 @@ from rich.panel import Panel
 from .models import Todo, TodoStore, Priority, Status
 
 
+def normalize_priority(priority: str) -> str:
+    """Convert shorthand priority (h, m, l) to full form (high, medium, low)."""
+    priority = priority.lower()
+    if priority == 'h':
+        return 'high'
+    elif priority == 'm':
+        return 'medium'
+    elif priority == 'l':
+        return 'low'
+    return priority
+
+
 # Initialize the todo store and console
 store = TodoStore()
 console = Console()
@@ -28,20 +40,17 @@ def cli():
 @cli.command("a", help="Add a new todo")
 @click.argument("description")
 @click.option("-f", "--file", "file_path", help="Associate with a file path")
-@click.option(
-    "-p", 
-    "--priority", 
-    type=click.Choice(["high", "medium", "low"], case_sensitive=False),
-    default="medium",
-    help="Set priority (default: medium)"
-)
+@click.option("-p", "--priority", type=click.Choice(["high", "medium", "low", "h", "m", "l"], case_sensitive=False), default="medium", help="Set priority (h/m/l or high/medium/low, default: medium)")
 def add(description: str, file_path: Optional[str], priority: str):
     """Add a new todo with the given description."""
     try:
+        # Normalize priority
+        priority = normalize_priority(priority)
+        
         todo = Todo(
             description=description,
             file_path=file_path,
-            priority=Priority(priority.lower())
+            priority=Priority(priority)
         )
         store.add(todo)
         
@@ -55,15 +64,15 @@ def add(description: str, file_path: Optional[str], priority: str):
         console.print(f"✅ Added todo ", end="")
         console.print(f"#{todo.id}", style="bold blue", end=": ")
         console.print(description, end=" ")
-        console.print(f"({priority.lower()})", style=f"bold {priority_color}")
+        console.print(f"({priority})", style=f"bold {priority_color}")
     except Exception as e:
         console.print(f"❌ Error adding todo: {str(e)}", style="bold red")
         sys.exit(1)
 
 
 @cli.command("l", help="List todos")
-@click.option("--completed", is_flag=True, help="Show only completed todos")
-@click.option("--pending", is_flag=True, help="Show only pending todos")
+@click.option("-c", "--completed", is_flag=True, help="Show only completed todos")
+@click.option("-p", "--pending", is_flag=True, help="Show only pending todos")
 @click.option("-f", "--file", "file_path", help="Filter by file path")
 def list_todos(completed: bool, pending: bool, file_path: Optional[str]):
     """List todos with optional filters."""
@@ -229,40 +238,62 @@ def show(todo_id: str):
 
 
 @cli.command("e", help="Erase todos")
-@click.argument("todo_id", required=False)
-@click.option("--all", is_flag=True, help="Erase all todos (both completed and pending)")
-@click.option("--completed", is_flag=True, help="Erase all completed todos")
-@click.option("--pending", is_flag=True, help="Erase all pending todos")
-@click.option("--force", is_flag=True, help="Skip confirmation")
-def erase(todo_id: Optional[str], all: bool, completed: bool, pending: bool, force: bool):
+@click.argument("todo_ids", nargs=-1, required=False)
+@click.option("-a", "--all", is_flag=True, help="Erase all todos (both completed and pending)")
+@click.option("-c", "--completed", is_flag=True, help="Erase all completed todos")
+@click.option("-p", "--pending", is_flag=True, help="Erase all pending todos")
+@click.option("-f", "--force", is_flag=True, help="Skip confirmation")
+def erase(todo_ids: List[str], all: bool, completed: bool, pending: bool, force: bool):
     """
-    Erase todos. With a todo_id, it marks as completed and removes that specific todo.
+    Erase todos. With todo_ids, it marks as completed and removes those specific todos.
     With --all, --completed, or --pending flags, it erases multiple todos.
     """
     try:
-        # Case 1: Erase a specific todo by ID
-        if todo_id:
-            todo = store.get(todo_id)
-            if not todo:
-                console.print(f"❌ Todo #{todo_id} not found.", style="bold red")
-                sys.exit(1)
+        # Case 1: Erase specific todos by ID(s)
+        if todo_ids:
+            todos_to_erase = []
+            not_found_ids = []
             
-            if not force:
-                console.print(Panel(f"Are you sure you want to erase: {todo.description}?"))
+            # Collect todos to erase
+            for todo_id in todo_ids:
+                todo = store.get(todo_id)
+                if todo:
+                    todos_to_erase.append(todo)
+                else:
+                    not_found_ids.append(todo_id)
+            
+            # Report any IDs that weren't found
+            if not_found_ids:
+                console.print(f"❌ Todo(s) not found: {', '.join(not_found_ids)}", style="bold red")
+                if not todos_to_erase:
+                    sys.exit(1)
+            
+            # Confirm before erasing
+            if not force and todos_to_erase:
+                descriptions = [f"#{todo.id}: {todo.description}" for todo in todos_to_erase]
+                console.print(Panel("\n".join(descriptions), title=f"Erase {len(todos_to_erase)} todo(s)?"))
                 confirm = click.confirm("Proceed?")
                 if not confirm:
                     console.print("Operation cancelled.", style="yellow")
                     return
             
-            # First mark as completed
-            if todo.status != Status.COMPLETED:
-                todo.mark_complete()
-                store.update(todo)
+            # Mark as completed and remove
+            count = 0
+            for todo in todos_to_erase:
+                # First mark as completed
+                if todo.status != Status.COMPLETED:
+                    todo.mark_complete()
+                    store.update(todo)
+                
+                # Then remove
+                store.remove(todo.id)
+                count += 1
             
-            # Then remove
-            store.remove(todo.id)
-            console.print(f"✨ Erased: ", end="")
-            console.print(f"{todo.description}", style="bold green")
+            if count == 1:
+                console.print(f"✨ Erased: ", end="")
+                console.print(f"{todos_to_erase[0].description}", style="bold green")
+            else:
+                console.print(f"✨ Erased {count} todos.", style="bold green")
             return
         
         # Case 2: Erase multiple todos based on flags
@@ -278,7 +309,7 @@ def erase(todo_id: Optional[str], all: bool, completed: bool, pending: bool, for
             todos_to_erase = store.filter(status=Status.PENDING)
             action_description = "all pending todos"
         else:
-            console.print("Please specify either a todo ID or use --all, --completed, or --pending flags.", style="yellow")
+            console.print("Please specify either todo ID(s) or use --all, --completed, or --pending flags.", style="yellow")
             return
         
         if not todos_to_erase:
@@ -310,6 +341,76 @@ def erase(todo_id: Optional[str], all: bool, completed: bool, pending: bool, for
         console.print(f"❌ Error erasing todos: {str(e)}", style="bold red")
         sys.exit(1)
 
+@cli.command("m", help="Modify todos priority")
+@click.argument("todo_ids", nargs=-1, required=False)
+@click.option("-p", "--priority", type=click.Choice(["high", "medium", "low", "h", "m", "l"], case_sensitive=False), default="medium", help="Set priority (h/m/l or high/medium/low, default: medium)")
+@click.option("-a", "--all", is_flag=True, help="Modify all todos (both completed and pending)")
+def modify(todo_ids: List[str], priority: str, all: bool):
+    """
+    Modify todos priority. Specify todo IDs to change their priority,
+    or use --all flag to modify all todos.
+    """
+    try:
+        # Normalize priority
+        priority = normalize_priority(priority)
+        
+        # Case 1: Modify all todos
+        if all:
+            todos_to_modify = store.get_all()
+            
+            if not todos_to_modify:
+                console.print("No todos to modify.", style="yellow")
+                return
+            
+            # Update priority for all todos
+            count = 0
+            for todo in todos_to_modify:
+                todo.priority = Priority(priority)
+                store.update(todo)
+                count += 1
+            
+            console.print(f"✨ Updated priority to {priority} for {count} todos.", style="bold blue")
+            return
+        
+        # Case 2: Modify specific todos by ID(s)
+        if not todo_ids:
+            console.print("Please specify either todo ID(s) or use the --all flag.", style="yellow")
+            return
+            
+        todos_to_modify = []
+        not_found_ids = []
+        
+        # Collect todos to modify
+        for todo_id in todo_ids:
+            todo = store.get(todo_id)
+            if todo:
+                todos_to_modify.append(todo)
+            else:
+                not_found_ids.append(todo_id)
+        
+        # Report any IDs that weren't found
+        if not_found_ids:
+            console.print(f"❌ Todo(s) not found: {', '.join(not_found_ids)}", style="bold red")
+            if not todos_to_modify:
+                sys.exit(1)
+        
+        # Update priority
+        count = 0
+        for todo in todos_to_modify:
+            # Update priority
+            todo.priority = Priority(priority)
+            store.update(todo)
+            count += 1
+        
+        if count == 1:
+            console.print(f"✨ Updated priority to {priority}: ", end="")
+            console.print(f"{todos_to_modify[0].description}", style="bold blue")
+        else:
+            console.print(f"✨ Updated priority to {priority} for {count} todos.", style="bold blue")
+        
+    except Exception as e:
+        console.print(f"❌ Error modifying todos: {str(e)}", style="bold red")
+        sys.exit(1)
 
 if __name__ == "__main__":
     cli()

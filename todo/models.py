@@ -57,7 +57,12 @@ class TodoStore:
     def __init__(self, storage_path: str = None):
         """Initialize the TodoStore with a path to the storage file."""
         if storage_path is None:
-            home_dir = os.path.expanduser("~")
+            # Check for development mode environment variable
+            if os.environ.get("TODO_DEV_MODE") == "1":
+                home_dir = os.path.expanduser("/Users/jiamatt/todo-proj/todo-cli")
+            else:
+                home_dir = os.path.expanduser("~")
+            
             storage_dir = os.path.join(home_dir, ".todo")
             os.makedirs(storage_dir, exist_ok=True)
             storage_path = os.path.join(storage_dir, "todos.json")

@@ -5,13 +5,13 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="todo-cli",
-    version="0.1.0",
-    author="Your Name",
+    version="1.0.0",
+    author="Matthew Jia",
     author_email="your.email@example.com",
-    description="A simple command-line todo application",
+    description="A simple, beautiful command-line todo application for developers",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/todo-cli",
+    url="https://github.com/Matthew-Jia/todo-cli",
     packages=find_packages(exclude=["tests*"]),
     classifiers=[
         "Programming Language :: Python :: 3",

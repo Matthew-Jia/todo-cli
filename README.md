@@ -7,6 +7,7 @@ A simple, beautiful command-line todo application for developers.
 - ✅ Add todos with descriptions, priorities, and file associations
 - 📋 List todos sorted by priority
 - ✓ Complete and mark todos as pending
+- 🔄 Modify priority of multiple todos at once
 - ✨ Erase todos (single or in bulk)
 - 🎨 Color-coded priorities and status indicators
 - 📁 Associate todos with specific files in your project
@@ -55,8 +56,15 @@ todo a "Fix login bug" -p high -f auth.js
 ```
 
 Options:
-- `-p, --priority [high|medium|low]`: Set priority (default: medium)
+- `-p, --priority [high|medium|low|h|m|l]`: Set priority (default: medium)
 - `-f, --file PATH`: Associate with a file path
+
+Shorthand priority examples:
+```bash
+todo a "Fix login bug" -p h     # high priority
+todo a "Update docs" -p m       # medium priority
+todo a "Minor tweak" -p l       # low priority
+```
 
 ### Listing Todos
 
@@ -67,11 +75,15 @@ todo l
 
 List only completed todos:
 ```bash
+todo l -c
+# or
 todo l --completed
 ```
 
 List only pending todos:
 ```bash
+todo l -p
+# or
 todo l --pending
 ```
 
@@ -84,8 +96,8 @@ todo l -f .js       # Shows todos with JavaScript files
 
 Combine filters:
 ```bash
-todo l --pending -f src    # Pending todos in src directory
-todo l --completed -f auth # Completed todos related to auth
+todo l -p -f src    # Pending todos in src directory
+todo l -c -f auth   # Completed todos related to auth
 ```
 
 ### Completing a Todo
@@ -100,6 +112,25 @@ todo c <id>
 todo p <id>
 ```
 
+### Modifying Todo Priorities
+
+Modify priority of a single todo:
+```bash
+todo m <id> -p high    # or -p h for short
+```
+
+Modify priority of multiple todos at once:
+```bash
+todo m <id1> <id2> <id3> -p low    # or -p l for short
+```
+
+Modify all todos:
+```bash
+todo m -a -p medium    # or -p m for short
+# or
+todo m --all --priority medium
+```
+
 ### Erasing Todos
 
 Erase a single todo (complete and remove):
@@ -107,24 +138,38 @@ Erase a single todo (complete and remove):
 todo e <id>
 ```
 
+Erase multiple todos at once:
+```bash
+todo e <id1> <id2> <id3>
+```
+
 Erase all todos:
 ```bash
+todo e -a
+# or
 todo e --all
 ```
 
 Erase all completed todos:
 ```bash
+todo e -c
+# or
 todo e --completed
 ```
 
 Erase all pending todos:
 ```bash
+todo e -p
+# or
 todo e --pending
 ```
 
 With force (no confirmation):
 ```bash
+todo e -a -f
+# or
 todo e --all --force
+todo e <id1> <id2> <id3> -f
 ```
 
 ### Showing Todo Details

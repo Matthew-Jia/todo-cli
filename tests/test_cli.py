@@ -171,10 +171,25 @@ class TestCli(unittest.TestCase):
         result = self.runner.invoke(cli, ['l'])
         self.assertNotIn('Task to erase', result.output)
         
-        # Test erasing all todos
-        self.mock_store.add(Todo(description="Todo 1"))
-        self.mock_store.add(Todo(description="Todo 2"))
+        # Test erasing multiple todos at once
+        todo1 = self.mock_store.add(Todo(description="Todo 1"))
+        todo2 = self.mock_store.add(Todo(description="Todo 2"))
+        todo3 = self.mock_store.add(Todo(description="Todo 3"))
         
+        # Erase two of them
+        result = self.runner.invoke(cli, ['e', todo1.id, todo2.id, '--force'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Erased', result.output)
+        self.assertIn('2', result.output)
+        self.assertIn('todos', result.output)
+        
+        # Verify only todo3 remains
+        result = self.runner.invoke(cli, ['l'])
+        self.assertNotIn('Todo 1', result.output)
+        self.assertNotIn('Todo 2', result.output)
+        self.assertIn('Todo 3', result.output)
+        
+        # Test erasing all todos
         result = self.runner.invoke(cli, ['e', '--all', '--force'])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('Erased', result.output)
@@ -183,6 +198,85 @@ class TestCli(unittest.TestCase):
         result = self.runner.invoke(cli, ['l'])
         self.assertIn('No todos found', result.output)
 
+
+    def test_modify_priority(self):
+        """Test modifying todo priorities."""
+        # Add some test todos
+        self.runner.invoke(cli, ['a', 'Todo 1', '-p', 'low'])
+        self.runner.invoke(cli, ['a', 'Todo 2', '-p', 'medium'])
+        self.runner.invoke(cli, ['a', 'Todo 3', '-p', 'high'])
+        
+        # List todos to get their IDs
+        list_result = self.runner.invoke(cli, ['l'])
+        self.assertEqual(list_result.exit_code, 0)
+        
+        # Modify a single todo's priority
+        result = self.runner.invoke(cli, ['m', '0', '-p', 'high'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Updated priority to high', result.output)
+        
+        # Verify the priority was changed
+        show_result = self.runner.invoke(cli, ['s', '0'])
+        self.assertEqual(show_result.exit_code, 0)
+        self.assertIn('Priority: high', show_result.output)
+        
+        # Modify multiple todos at once
+        result = self.runner.invoke(cli, ['m', '1', '2', '-p', 'low'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Updated priority to low for 2 todos', result.output)
+        
+        # Verify all priorities were changed
+        show_result = self.runner.invoke(cli, ['s', '1'])
+        self.assertEqual(show_result.exit_code, 0)
+        self.assertIn('Priority: low', show_result.output)
+        
+        show_result = self.runner.invoke(cli, ['s', '2'])
+        self.assertEqual(show_result.exit_code, 0)
+        self.assertIn('Priority: low', show_result.output)
+        
+        # Test modifying all todos
+        result = self.runner.invoke(cli, ['m', '-a', '-p', 'medium'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Updated priority to medium for', result.output)
+        
+        # Verify all priorities were changed to medium
+        list_result = self.runner.invoke(cli, ['l'])
+        self.assertEqual(list_result.exit_code, 0)
+        self.assertNotIn('high', list_result.output)
+        self.assertNotIn('low', list_result.output)
+        
+    def test_shorthand_priority(self):
+        """Test using shorthand priority options (h, m, l)."""
+        # Test adding with shorthand priorities
+        result = self.runner.invoke(cli, ['a', 'High priority todo', '-p', 'h'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Added todo', result.output)
+        self.assertIn('high', result.output)
+        
+        result = self.runner.invoke(cli, ['a', 'Medium priority todo', '-p', 'm'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Added todo', result.output)
+        self.assertIn('medium', result.output)
+        
+        result = self.runner.invoke(cli, ['a', 'Low priority todo', '-p', 'l'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Added todo', result.output)
+        self.assertIn('low', result.output)
+        
+        # Test modifying with shorthand priorities
+        # First, get the IDs
+        list_result = self.runner.invoke(cli, ['l'])
+        self.assertEqual(list_result.exit_code, 0)
+        
+        # Modify a todo from high to low using shorthand
+        result = self.runner.invoke(cli, ['m', '0', '-p', 'l'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Updated priority to low', result.output)
+        
+        # Verify the change
+        show_result = self.runner.invoke(cli, ['s', '0'])
+        self.assertEqual(show_result.exit_code, 0)
+        self.assertIn('Priority: low', show_result.output)
 
 if __name__ == "__main__":
     unittest.main()
