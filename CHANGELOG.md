@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-06-17
+### Added
+- Support for shorthand priority options (h, m, l) in addition to full words (high, medium, low)
+
+### Changed
+- Removed confirmation requirement for modifying todo priorities
+- Improved README documentation with clearer examples
+- Enhanced command syntax documentation showing both short and long option formats
+
+## [1.0.0] - 2025-05-22
 ### Added
 - Support for erasing multiple todos at once with a single command
 - Short command flags as alternatives to long options (e.g., `-c` for `--completed`, `-p` for `--pending`, `-a` for `--all`)
@@ -20,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed file path filtering in list command
 
-## [1.0.0] - 2025-05-22
+## [0.1.0] - 2025-05-19
 - Initial release
 - Add todos with descriptions, priorities, and file associations
 - List todos sorted by priority
@@ -30,5 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Associate todos with specific files in your project
 - Simple numeric IDs (0-99) for easy reference
 
-[Unreleased]: https://github.com/Matthew-Jia/todo-cli/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/Matthew-Jia/todo-cli/releases/tag/v1.0.0
+[Unreleased]: https://github.com/Matthew-Jia/todo-cli/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Matthew-Jia/todo-cli/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/Matthew-Jia/todo-cli/compare/v0.1.0...v1.0.0
+[0.1.0]: https://github.com/Matthew-Jia/todo-cli/releases/tag/v0.1.0

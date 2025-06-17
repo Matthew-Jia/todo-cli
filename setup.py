@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="todo-cli",
-    version="1.0.0",
+    version="1.1.0",
     author="Matthew Jia",
     author_email="your.email@example.com",
     description="A simple, beautiful command-line todo application for developers",
