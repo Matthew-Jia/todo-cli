@@ -6,7 +6,7 @@ A simple, beautiful command-line todo application for developers.
 
 - ✅ Add todos with descriptions, priorities, and file associations
 - 📋 List todos sorted by priority
-- ✓ Complete and mark todos as pending
+- ✓ Complete and mark todos as pending (single, multiple, or all at once)
 - 🔄 Modify priority of multiple todos at once
 - ✨ Erase todos (single or in bulk)
 - 🎨 Color-coded priorities and status indicators
@@ -100,16 +100,38 @@ todo l -p -f src    # Pending todos in src directory
 todo l -c -f auth   # Completed todos related to auth
 ```
 
-### Completing a Todo
+### Completing Todos
 
+Complete a single todo:
 ```bash
 todo c <id>
 ```
 
-### Marking a Todo as Pending
+Complete multiple todos:
+```bash
+todo c <id1> <id2> <id3>
+```
 
+Complete all pending todos:
+```bash
+todo c --all    # or -a for short
+```
+
+### Marking Todos as Pending
+
+Mark a single todo as pending:
 ```bash
 todo p <id>
+```
+
+Mark multiple todos as pending:
+```bash
+todo p <id1> <id2> <id3>
+```
+
+Mark all completed todos as pending:
+```bash
+todo p --all    # or -a for short
 ```
 
 ### Modifying Todo Priorities

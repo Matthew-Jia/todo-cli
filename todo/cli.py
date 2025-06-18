@@ -149,37 +149,121 @@ def list_todos(completed: bool, pending: bool, file_path: Optional[str]):
         sys.exit(1)
 
 
-@cli.command("c", help="Complete a todo")
-@click.argument("todo_id")
-def complete(todo_id: str):
-    """Mark a todo as completed."""
+@cli.command("c", help="Complete todos")
+@click.argument("todo_ids", nargs=-1, required=False)
+@click.option("-a", "--all", is_flag=True, help="Mark all pending todos as completed")
+def complete(todo_ids: List[str], all: bool):
+    """Mark todos as completed. Specify todo IDs or use --all flag."""
     try:
-        todo = store.mark_complete(todo_id)
-        if todo:
-            console.print(f"Marked as Completed: ", end="")
-            console.print(f"{todo.description}", style="bold green")
+        # Case 1: Mark all pending todos as completed
+        if all:
+            pending_todos = store.filter(status=Status.PENDING)
+            
+            if not pending_todos:
+                console.print("No pending todos to complete.", style="yellow")
+                return
+            
+            # Mark all pending todos as completed
+            count = 0
+            for todo in pending_todos:
+                store.mark_complete(todo.id)
+                count += 1
+            
+            console.print(f"✅ Marked {count} todos as completed.", style="bold green")
+            return
+        
+        # Case 2: Mark specific todos as completed
+        if not todo_ids:
+            console.print("Please specify either todo ID(s) or use the --all flag.", style="yellow")
+            return
+            
+        todos_completed = []
+        not_found_ids = []
+        
+        # Process each todo ID
+        for todo_id in todo_ids:
+            todo = store.mark_complete(todo_id)
+            if todo:
+                todos_completed.append(todo)
+            else:
+                not_found_ids.append(todo_id)
+        
+        # Report any IDs that weren't found
+        if not_found_ids:
+            console.print(f"❌ Todo(s) not found: {', '.join(not_found_ids)}", style="bold red")
+            if not todos_completed:
+                sys.exit(1)
+        
+        # Report successful completions
+        if len(todos_completed) == 1:
+            console.print(f"✅ Marked as Completed: ", end="")
+            console.print(f"{todos_completed[0].description}", style="bold green")
         else:
-            console.print(f"❌ Todo #{todo_id} not found.", style="bold red")
-            sys.exit(1)
+            console.print(f"✅ Marked {len(todos_completed)} todos as completed:", style="bold green")
+            for todo in todos_completed:
+                console.print(f"  • {todo.description}")
+        
     except Exception as e:
-        console.print(f"❌ Error completing todo: {str(e)}", style="bold red")
+        console.print(f"❌ Error completing todos: {str(e)}", style="bold red")
         sys.exit(1)
 
 
-@cli.command("p", help="Mark a todo as pending")
-@click.argument("todo_id")
-def pending(todo_id: str):
-    """Mark a completed todo as pending."""
+@cli.command("p", help="Mark todos as pending")
+@click.argument("todo_ids", nargs=-1, required=False)
+@click.option("-a", "--all", is_flag=True, help="Mark all completed todos as pending")
+def pending(todo_ids: List[str], all: bool):
+    """Mark todos as pending. Specify todo IDs or use --all flag."""
     try:
-        todo = store.mark_pending(todo_id)
-        if todo:
-            console.print(f"Marked as Pending: ", end="")
-            console.print(f"{todo.description}", style="bold yellow")
+        # Case 1: Mark all completed todos as pending
+        if all:
+            completed_todos = store.filter(status=Status.COMPLETED)
+            
+            if not completed_todos:
+                console.print("No completed todos to mark as pending.", style="yellow")
+                return
+            
+            # Mark all completed todos as pending
+            count = 0
+            for todo in completed_todos:
+                store.mark_pending(todo.id)
+                count += 1
+            
+            console.print(f"🔄 Marked {count} todos as pending.", style="bold yellow")
+            return
+        
+        # Case 2: Mark specific todos as pending
+        if not todo_ids:
+            console.print("Please specify either todo ID(s) or use the --all flag.", style="yellow")
+            return
+            
+        todos_pending = []
+        not_found_ids = []
+        
+        # Process each todo ID
+        for todo_id in todo_ids:
+            todo = store.mark_pending(todo_id)
+            if todo:
+                todos_pending.append(todo)
+            else:
+                not_found_ids.append(todo_id)
+        
+        # Report any IDs that weren't found
+        if not_found_ids:
+            console.print(f"❌ Todo(s) not found: {', '.join(not_found_ids)}", style="bold red")
+            if not todos_pending:
+                sys.exit(1)
+        
+        # Report successful changes to pending
+        if len(todos_pending) == 1:
+            console.print(f"🔄 Marked as Pending: ", end="")
+            console.print(f"{todos_pending[0].description}", style="bold yellow")
         else:
-            console.print(f"❌ Todo #{todo_id} not found.", style="bold red")
-            sys.exit(1)
+            console.print(f"🔄 Marked {len(todos_pending)} todos as pending:", style="bold yellow")
+            for todo in todos_pending:
+                console.print(f"  • {todo.description}")
+        
     except Exception as e:
-        console.print(f"❌ Error marking todo as pending: {str(e)}", style="bold red")
+        console.print(f"❌ Error marking todos as pending: {str(e)}", style="bold red")
         sys.exit(1)
 
 

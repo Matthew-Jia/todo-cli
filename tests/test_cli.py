@@ -118,17 +118,60 @@ class TestCli(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn('pending', result.output.lower())
         self.assertIn('Task to mark pending', result.output)
+    
+    def test_complete_multiple_todos(self):
+        """Test completing multiple todos by ID."""
+        # Add multiple todos
+        todo1 = self.mock_store.add(Todo(description="Task 1"))
+        todo2 = self.mock_store.add(Todo(description="Task 2"))
+        todo3 = self.mock_store.add(Todo(description="Task 3"))
         
-        # Verify it's now pending
+        # Complete multiple todos
+        result = self.runner.invoke(cli, ['c', todo1.id, todo2.id])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('2 todos as completed', result.output)
+        
+        # Verify they're completed
+        result = self.runner.invoke(cli, ['l', '--completed'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Task 1', result.output)
+        self.assertIn('Task 2', result.output)
+        
+        # Verify the third one is still pending
         result = self.runner.invoke(cli, ['l', '--pending'])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('Task to mark pending', result.output)
+        self.assertIn('Task 3', result.output)
+        self.assertNotIn('Task 1', result.output)
+        self.assertNotIn('Task 2', result.output)
+    
+    def test_pending_multiple_todos(self):
+        """Test marking multiple todos as pending."""
+        # Add and complete multiple todos
+        todo1 = self.mock_store.add(Todo(description="Completed Task 1"))
+        todo2 = self.mock_store.add(Todo(description="Completed Task 2"))
+        todo3 = self.mock_store.add(Todo(description="Completed Task 3"))
         
-        # Test marking a non-completed todo as pending
-        todo2 = self.mock_store.add(Todo(description="Already pending task"))
-        result = self.runner.invoke(cli, ['p', todo2.id])
+        self.mock_store.mark_complete(todo1.id)
+        self.mock_store.mark_complete(todo2.id)
+        self.mock_store.mark_complete(todo3.id)
+        
+        # Mark multiple todos as pending
+        result = self.runner.invoke(cli, ['p', todo1.id, todo2.id])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('already pending', result.output.lower())
+        self.assertIn('2 todos as pending', result.output)
+        
+        # Verify they're pending
+        result = self.runner.invoke(cli, ['l', '--pending'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Completed Task 1', result.output)
+        self.assertIn('Completed Task 2', result.output)
+        
+        # Verify the third one is still completed
+        result = self.runner.invoke(cli, ['l', '--completed'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Completed Task 3', result.output)
+        self.assertNotIn('Completed Task 1', result.output)
+        self.assertNotIn('Completed Task 2', result.output)
         
         # Test marking non-existent todo as pending
         result = self.runner.invoke(cli, ['p', 'non-existent-id'])
@@ -277,6 +320,126 @@ class TestCli(unittest.TestCase):
         show_result = self.runner.invoke(cli, ['s', '0'])
         self.assertEqual(show_result.exit_code, 0)
         self.assertIn('Priority: low', show_result.output)
+    
+    def test_complete_all_todos(self):
+        """Test completing all pending todos with --all flag."""
+        # Add multiple todos with different statuses
+        todo1 = self.mock_store.add(Todo(description="Pending Task 1"))
+        todo2 = self.mock_store.add(Todo(description="Pending Task 2"))
+        todo3 = self.mock_store.add(Todo(description="Already Completed"))
+        
+        # Mark one as completed already
+        self.mock_store.mark_complete(todo3.id)
+        
+        # Complete all pending todos
+        result = self.runner.invoke(cli, ['c', '--all'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('2 todos as completed', result.output)
+        
+        # Verify all todos are now completed
+        result = self.runner.invoke(cli, ['l', '--completed'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Pending Task 1', result.output)
+        self.assertIn('Pending Task 2', result.output)
+        self.assertIn('Already Completed', result.output)
+        
+        # Verify no pending todos remain
+        result = self.runner.invoke(cli, ['l', '--pending'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('No todos found', result.output)
+    
+    def test_pending_all_todos(self):
+        """Test marking all completed todos as pending with --all flag."""
+        # Add multiple todos and complete them
+        todo1 = self.mock_store.add(Todo(description="Completed Task 1"))
+        todo2 = self.mock_store.add(Todo(description="Completed Task 2"))
+        todo3 = self.mock_store.add(Todo(description="Still Pending"))
+        
+        self.mock_store.mark_complete(todo1.id)
+        self.mock_store.mark_complete(todo2.id)
+        
+        # Mark all completed todos as pending
+        result = self.runner.invoke(cli, ['p', '--all'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('2 todos as pending', result.output)
+        
+        # Verify all todos are now pending
+        result = self.runner.invoke(cli, ['l', '--pending'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Completed Task 1', result.output)
+        self.assertIn('Completed Task 2', result.output)
+        self.assertIn('Still Pending', result.output)
+        
+        # Verify no completed todos remain
+        result = self.runner.invoke(cli, ['l', '--completed'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('No todos found', result.output)
+    
+    def test_complete_with_mixed_valid_invalid_ids(self):
+        """Test completing todos with a mix of valid and invalid IDs."""
+        # Add a todo
+        todo1 = self.mock_store.add(Todo(description="Valid Task"))
+        
+        # Try to complete valid and invalid IDs
+        result = self.runner.invoke(cli, ['c', todo1.id, 'invalid-id'])
+        self.assertEqual(result.exit_code, 0)  # Should succeed for valid ID
+        self.assertIn('not found: invalid-id', result.output)
+        self.assertIn('Valid Task', result.output)
+        
+        # Verify the valid todo was completed
+        result = self.runner.invoke(cli, ['l', '--completed'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Valid Task', result.output)
+    
+    def test_pending_with_mixed_valid_invalid_ids(self):
+        """Test marking todos as pending with a mix of valid and invalid IDs."""
+        # Add and complete a todo
+        todo1 = self.mock_store.add(Todo(description="Valid Completed Task"))
+        self.mock_store.mark_complete(todo1.id)
+        
+        # Try to mark valid and invalid IDs as pending
+        result = self.runner.invoke(cli, ['p', todo1.id, 'invalid-id'])
+        self.assertEqual(result.exit_code, 0)  # Should succeed for valid ID
+        self.assertIn('not found: invalid-id', result.output)
+        self.assertIn('Valid Completed Task', result.output)
+        
+        # Verify the valid todo was marked as pending
+        result = self.runner.invoke(cli, ['l', '--pending'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Valid Completed Task', result.output)
+    
+    def test_complete_no_args_shows_help(self):
+        """Test that complete command without args shows helpful message."""
+        result = self.runner.invoke(cli, ['c'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Please specify either todo ID(s) or use the --all flag', result.output)
+    
+    def test_pending_no_args_shows_help(self):
+        """Test that pending command without args shows helpful message."""
+        result = self.runner.invoke(cli, ['p'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Please specify either todo ID(s) or use the --all flag', result.output)
+    
+    def test_complete_all_with_no_pending_todos(self):
+        """Test completing all todos when no pending todos exist."""
+        # Add and complete a todo
+        todo1 = self.mock_store.add(Todo(description="Already Completed"))
+        self.mock_store.mark_complete(todo1.id)
+        
+        # Try to complete all pending todos
+        result = self.runner.invoke(cli, ['c', '--all'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('No pending todos to complete', result.output)
+    
+    def test_pending_all_with_no_completed_todos(self):
+        """Test marking all todos as pending when no completed todos exist."""
+        # Add a pending todo
+        todo1 = self.mock_store.add(Todo(description="Still Pending"))
+        
+        # Try to mark all completed todos as pending
+        result = self.runner.invoke(cli, ['p', '--all'])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('No completed todos to mark as pending', result.output)
 
 if __name__ == "__main__":
     unittest.main()
