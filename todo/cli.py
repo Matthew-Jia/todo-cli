@@ -31,7 +31,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option(version="1.1.0")
+@click.version_option(version="1.2.0")
 def cli():
     """Todo CLI - A simple command-line todo application."""
     pass
